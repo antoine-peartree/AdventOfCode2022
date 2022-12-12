@@ -27,7 +27,7 @@ struct Monkey {
     uint64_t nbInspections;
 };
 
-static void doRound(std::vector<Monkey>& monkeys)
+static void doRound(std::vector<Monkey>& monkeys, uint64_t lcm, bool isPart1 = true)
 {
     /* For each monkey */
     for (auto monkey = monkeys.begin(); monkey != monkeys.end(); ++monkey) {
@@ -41,7 +41,11 @@ static void doRound(std::vector<Monkey>& monkeys)
             uint64_t newWorryLevel = !monkey->op.opType.compare("*") ? op1 * op2 : op1 + op2;
 
             /* Usual worry level division */
-            newWorryLevel = floor(newWorryLevel / 3.0);
+            if (isPart1)
+                newWorryLevel = floor(newWorryLevel / 3.0);
+
+            /* Apply LCM to manage high values */
+            newWorryLevel %= lcm;
 
             /* Division test */
             int newMonkey = newWorryLevel % monkey->div ? monkey->nextMonkeyIfFalse : monkey->nextMonkeyIfTrue;
@@ -58,7 +62,7 @@ static void doRound(std::vector<Monkey>& monkeys)
     }
 }
 
-static void parseInfile(std::ifstream& infile, std::vector<Monkey>& monkeys)
+static void parseInfile(std::ifstream& infile, std::vector<Monkey>& monkeys, uint64_t& lcm)
 {
     std::string line;
     while (std::getline(infile, line)) {
@@ -84,6 +88,7 @@ static void parseInfile(std::ifstream& infile, std::vector<Monkey>& monkeys)
         auto readLastIntFromNextStr = [](std::string line) {return std::stoi(line.substr(line.find("y ") + 2));};
         std::getline(infile, line);
         monkey.div = readLastIntFromNextStr(line);
+        lcm *= monkey.div;
         std::getline(infile, line);
         monkey.nextMonkeyIfTrue = readLastIntFromNextStr(line);
         std::getline(infile, line);
@@ -95,22 +100,32 @@ static void parseInfile(std::ifstream& infile, std::vector<Monkey>& monkeys)
     }
 }
 
-static int run(std::ifstream& infile)
+static uint64_t getMonkeyBusiness(std::vector<Monkey>& monkeys)
 {
-    std::vector<Monkey> monkeys;
-
-    /* Parse infile */
-    parseInfile(infile, monkeys);
-
-    /* Do a certain amount of rounds */
-    for (int nbRound = 0; nbRound < 20; nbRound++)
-        doRound(monkeys);
-
-    /* Retrieve monkey business */
     std::set<uint64_t> nbInspections;
     for (auto monkey = monkeys.begin(); monkey != monkeys.end(); ++monkey)
         nbInspections.insert(monkey->nbInspections);
-    std::cout << "PART1 - Monkey business : " << (*nbInspections.rbegin()) * (*(++nbInspections.rbegin())) << std::endl;
+    return (*nbInspections.rbegin()) * (*(++nbInspections.rbegin()));
+}
+
+static int run(std::ifstream& infile)
+{
+    std::vector<Monkey> initMonkeys;
+    uint64_t lcm = 1;
+    parseInfile(infile, initMonkeys, lcm);
+
+    /* Do rounds for Part 1 */
+    std::vector<Monkey> monkeys = initMonkeys;
+    for (int nbRound = 0; nbRound < 20; nbRound++)
+        doRound(monkeys, lcm);
+    std::cout << "PART1 - Monkey business : " << getMonkeyBusiness(monkeys) << std::endl;
+
+    /* Do rounds for Part 2 */
+    monkeys = initMonkeys;
+    bool isPart1 = false;
+    for (int nbRound = 0; nbRound < 10000; nbRound++)
+        doRound(monkeys, lcm, isPart1);
+    std::cout << "PART2 - Monkey business : " << getMonkeyBusiness(monkeys) << std::endl;
 
     return 0;
 }
